@@ -1,15 +1,10 @@
-# module "key_pair" {
-#   source        = "../modules/key-pair"
-#   key_pair_name = "${var.project_name}-key"
-# }
-
-
+# ----------------- SECURITY GROUP -----------------
 module "security_group" {
   source       = "../modules/sg"
   project_name = var.project_name
   environment  = var.environment
   sg_name      = var.sg_name
-  vpc_id       = data.aws_vpc.default.id  # ✅ Using data source for default VPC
+  vpc_id       = data.aws_vpc.default.id
 
   common_tags = var.common_tags
   sg_tags = {
@@ -18,26 +13,40 @@ module "security_group" {
   }
 }
 
-
-module "ec2" {
+module "jenkins-master" {
   source                 = "../modules/ec2"
   ami                    = data.aws_ami.ubuntu_surnoi.id
-  instance_names         = var.instance_names
-  instance_type          = var.instance_type
-  instance_count         = var.instance_count
-
-  # ❌ Temporarily disabling key pair to allow password login
-  # key_name               = module.key_pair.key_pair_name
-
+  instance_names         = var.instance_names.jenkins
+  instance_type          = var.instance_types.jenkins
+  instance_count         = length(var.instance_names.jenkins)
   vpc_security_group_ids = [module.security_group.security_group_id]
-  user_data              = file("${path.module}/user_data.sh")
+  user_data              = file("${path.module}/user_jenkins-master.sh")
 
   tags = merge(
     var.common_tags,
     {
       Project     = var.project_name
       Environment = var.environment
-      ManagedBy   = "Terraform"
+      ManagedBy   = "devops"
+    }
+  )
+}
+
+module "backend" {
+  source                 = "../modules/ec2"
+  ami                    = data.aws_ami.ubuntu_surnoi.id
+  instance_names         = var.instance_names.backend
+  instance_type          = var.instance_types.backend
+  instance_count         = length(var.instance_names.backend)
+  vpc_security_group_ids = [module.security_group.security_group_id]
+  user_data              = file("${path.module}/user_backend.sh")
+
+  tags = merge(
+    var.common_tags,
+    {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "devops"
     }
   )
 }

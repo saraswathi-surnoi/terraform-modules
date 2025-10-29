@@ -1,21 +1,21 @@
-output "public_ip" {
-  description = "Public IPs of EC2 instances"
-  value       = module.ec2.instance_public_ips
+# ---------------- Jenkins Master Outputs ----------------
+output "jenkins_public_ips" {
+  description = "Public IP of Jenkins Master"
+  value       = module.jenkins-master.instance_public_ips
 }
 
-output "private_ip" {
-  description = "Private IPs of EC2 instances"
-  value       = module.ec2.instance_private_ips
+output "jenkins_private_ips" {
+  description = "Private IP of Jenkins Master"
+  value       = module.jenkins-master.instance_private_ips
 }
 
-output "instance_id" {
-  description = "IDs of EC2 instances"
-  value       = module.ec2.instance_ids
+# ---------------- Backend Servers Outputs ----------------
+output "backend_public_ips" {
+  description = "Public IPs of Backend Servers"
+  value       = module.backend.instance_public_ips
 }
 
-output "instance_names_with_ips" {
-  description = "Instance names with their public IPs"
-  value = {
-    for i, name in var.instance_names : name => module.ec2.instance_public_ips[i]
-  }
+output "backend_private_ips" {
+  description = "Private IPs of Backend Servers"
+  value       = module.backend.instance_private_ips
 }
