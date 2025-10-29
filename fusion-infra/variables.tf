@@ -14,6 +14,7 @@ variable "sg_name" {
 #   description = "VPC ID where EC2 and SG will be created"
 # }
 
+
 variable "instance_names" {
   type    = list(string)
   default = ["backend-1", "backend-2", "jenkins-master"]

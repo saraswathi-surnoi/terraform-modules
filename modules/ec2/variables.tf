@@ -18,10 +18,10 @@ variable "instance_count" {
   type        = number
 }
 
-variable "key_name" {
-  description = "SSH key pair name"
-  type        = string
-}
+# variable "key_name" {
+#   description = "SSH key pair name"
+#   type        = string
+# }
 
 variable "vpc_security_group_ids" {
   description = "List of Security Group IDs"
