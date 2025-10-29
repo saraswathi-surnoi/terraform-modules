@@ -20,7 +20,7 @@ module "jenkins-master" {
   instance_type          = var.instance_types.jenkins
   instance_count         = length(var.instance_names.jenkins)
   vpc_security_group_ids = [module.security_group.security_group_id]
-  user_data              = file("${path.module}/user_jenkins-master.sh")
+  user_data              = file("${path.module}/user_jenkins.yml")
 
   tags = merge(
     var.common_tags,
@@ -39,7 +39,7 @@ module "backend" {
   instance_type          = var.instance_types.backend
   instance_count         = length(var.instance_names.backend)
   vpc_security_group_ids = [module.security_group.security_group_id]
-  user_data              = file("${path.module}/user_backend.sh")
+  user_data              = file("${path.module}/user_backend.yml")
 
   tags = merge(
     var.common_tags,

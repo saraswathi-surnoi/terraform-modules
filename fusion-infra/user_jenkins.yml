@@ -1,0 +1,54 @@
+#cloud-config
+users:
+  - name: devops
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    home: /home/devops
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: "Devops@321"
+
+ssh_pwauth: true
+disable_root: true
+
+runcmd:
+  # Enable password authentication for SSH
+  - sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - systemctl restart sshd
+
+  # Update system
+  - apt update -y
+  - apt upgrade -y
+
+  # Install basic packages
+  - apt install -y git wget curl unzip apt-transport-https ca-certificates gnupg lsb-release
+
+  # ---------------- JAVA 21 ----------------
+  - apt install -y openjdk-21-jdk
+
+  # ---------------- MAVEN ----------------
+  - cd /opt
+  - wget https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz
+  - tar xvf apache-maven-3.9.8-bin.tar.gz
+  - mv apache-maven-3.9.8 maven
+  - echo "export PATH=\$PATH:/opt/maven/bin" >> /etc/profile
+  - source /etc/profile
+
+  # ---------------- DOCKER ----------------
+  - apt remove -y docker docker-engine docker.io containerd runc || true
+  - apt install -y docker.io
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker devops
+
+  # ---------------- JENKINS ----------------
+  - curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | tee \
+    /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+  - echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+    https://pkg.jenkins.io/debian-stable binary/ | tee \
+    /etc/apt/sources.list.d/jenkins.list > /dev/null
+  - apt update -y
+  - apt install -y jenkins
+  - systemctl enable jenkins
+  - systemctl start jenkins
