@@ -17,3 +17,6 @@ data "aws_ami" "ubuntu_surnoi" {
     values = ["hvm"] 
   }
 }
+data "aws_vpc" "default" {
+  default = true
+}
