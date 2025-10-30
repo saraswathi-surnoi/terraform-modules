@@ -6,9 +6,17 @@ variable "environment" {
   default = "dev"
 }
 
-variable "sg_name" {
-  default = "fusion-sg"
+# variable "sg_name" {
+#   default = "fusion-sg"
+# }
+variable "sg_names" {
+  type = map(string)
+  default = {
+    backend = "fusion-backend-sg"
+    jenkins = "fusion-jenkins-sg"
+  }
 }
+
 
 # variable "vpc_id" {
 #   description = "VPC ID where EC2 and SG will be created"
@@ -63,6 +71,13 @@ variable "instance_names" {
     jenkins = ["jenkins-master"]
     backend = ["backend-1", "backend-2"]
   }
+}
+variable "backend_ports" {
+  default = [8080, 8082, 8083, 8084, 8085, 8086, 8087, 8761, 22,]
+}
+
+variable "jenkins_ports" {
+  default = [22, 8080]
 }
 
 

@@ -2,7 +2,7 @@
 users:
   - name: devops
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    groups: sudo
+    groups: sudo, docker
     home: /home/devops
     shell: /bin/bash
     lock_passwd: false
@@ -21,19 +21,20 @@ runcmd:
   - apt update -y
   - apt upgrade -y
 
-  # Install basic packages
-  - apt install -y git wget curl unzip apt-transport-https ca-certificates gnupg lsb-release
+  # Install dependencies
+  - apt install -y git wget curl unzip apt-transport-https ca-certificates gnupg lsb-release software-properties-common
 
   # ---------------- JAVA 21 ----------------
   - apt install -y openjdk-21-jdk
+  - java -version
 
   # ---------------- MAVEN ----------------
-  - cd /opt
-  - wget https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz
-  - tar xvf apache-maven-3.9.8-bin.tar.gz
-  - mv apache-maven-3.9.8 maven
-  - echo "export PATH=\$PATH:/opt/maven/bin" >> /etc/profile
-  - source /etc/profile
+  - wget -q https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz -P /tmp
+  - tar xf /tmp/apache-maven-3.9.8-bin.tar.gz -C /opt
+  - ln -s /opt/apache-maven-3.9.8 /opt/maven
+  - echo 'export M2_HOME=/opt/maven' > /etc/profile.d/maven.sh
+  - echo 'export PATH=$PATH:/opt/maven/bin' >> /etc/profile.d/maven.sh
+  - chmod +x /etc/profile.d/maven.sh
 
   # ---------------- DOCKER ----------------
   - apt remove -y docker docker-engine docker.io containerd runc || true
@@ -43,12 +44,18 @@ runcmd:
   - usermod -aG docker devops
 
   # ---------------- JENKINS ----------------
-  - curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | tee \
-    /usr/share/keyrings/jenkins-keyring.asc > /dev/null
-  - echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-    https://pkg.jenkins.io/debian-stable binary/ | tee \
-    /etc/apt/sources.list.d/jenkins.list > /dev/null
+  - curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+  - echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
   - apt update -y
-  - apt install -y jenkins
+  - apt install -y fontconfig jenkins
+  - systemctl daemon-reload
   - systemctl enable jenkins
   - systemctl start jenkins
+
+  # Verify installations
+  - echo "------ Versions ------"
+  - java -version
+  - mvn -version
+  - git --version
+  - docker --version
+  - systemctl status jenkins | head -10

@@ -2,7 +2,7 @@
 users:
   - name: devops
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    groups: sudo
+    groups: sudo, docker
     home: /home/devops
     shell: /bin/bash
     lock_passwd: false
@@ -12,83 +12,33 @@ ssh_pwauth: true
 disable_root: true
 
 runcmd:
-  # ---------------- SSH Configuration ----------------
+  # Enable password authentication for SSH
   - sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
   - sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-  - sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-  - sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
   - systemctl restart sshd
 
-  # ---------------- SCRIPT EXECUTION ----------------
-  - echo '#!/bin/bash' > /tmp/backend.sh
-  - echo 'R="\e[31m"' >> /tmp/backend.sh
-  - echo 'G="\e[32m"' >> /tmp/backend.sh
-  - echo 'Y="\e[33m"' >> /tmp/backend.sh
-  - echo 'N="\e[0m"' >> /tmp/backend.sh
-  - echo 'TIMESTAMP=$(date +%F-%H-%M-%S)' >> /tmp/backend.sh
-  - echo 'LOG_FILE="/tmp/backend_installation_log_$TIMESTAMP.log"' >> /tmp/backend.sh
-  - echo 'ID=$(id -u)' >> /tmp/backend.sh
-  - echo 'echo "Script started at $TIMESTAMP" &>> $LOG_FILE' >> /tmp/backend.sh
+  # Update system
+  - apt update -y
+  - apt upgrade -y
 
-  - echo 'VALIDATE() {' >> /tmp/backend.sh
-  - echo '  if [ $1 -ne 0 ]; then' >> /tmp/backend.sh
-  - echo '    echo -e "$2 process $R FAILED $N"' >> /tmp/backend.sh
-  - echo '    exit 1' >> /tmp/backend.sh
-  - echo '  else' >> /tmp/backend.sh
-  - echo '    echo -e "$2 process $G SUCCESS $N"' >> /tmp/backend.sh
-  - echo '  fi' >> /tmp/backend.sh
-  - echo '}' >> /tmp/backend.sh
+  # Install dependencies
+  - apt install -y git wget curl unzip apt-transport-https ca-certificates gnupg lsb-release software-properties-common
 
-  - echo 'if [ $ID -ne 0 ]; then' >> /tmp/backend.sh
-  - echo '  echo -e "$R Error: Please run as root $N"' >> /tmp/backend.sh
-  - echo '  exit 1' >> /tmp/backend.sh
-  - echo 'fi' >> /tmp/backend.sh
-
-  - echo 'echo "--------- Backend Configuration in progress, please wait... --------------- "' >> /tmp/backend.sh
-
-  # ---------------- GIT ----------------
-  - echo 'yum list installed git &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'if [ $? -ne 0 ]; then' >> /tmp/backend.sh
-  - echo '  yum install git -y &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo '  VALIDATE $? "Git Installed"' >> /tmp/backend.sh
-  - echo 'else' >> /tmp/backend.sh
-  - echo '  echo -e "Git already Installed $Y SKIPPING $N"' >> /tmp/backend.sh
-  - echo 'fi' >> /tmp/backend.sh
-
-  # ---------------- JAVA ----------------
-  - echo 'yum list installed java-21-amazon-corretto-devel &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'if [ $? -ne 0 ]; then' >> /tmp/backend.sh
-  - echo '  yum install java-21-amazon-corretto-devel -y &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo '  VALIDATE $? "Java 21 Installed"' >> /tmp/backend.sh
-  - echo 'else' >> /tmp/backend.sh
-  - echo '  echo -e "Java 21 already Installed $Y SKIPPING $N"' >> /tmp/backend.sh
-  - echo 'fi' >> /tmp/backend.sh
+  # ---------------- JAVA 21 ----------------
+  - apt install -y openjdk-21-jdk
+  - java -version
 
   # ---------------- MAVEN ----------------
-  - echo 'rm -rf /opt/ap* /opt/maven' >> /tmp/backend.sh
-  - echo 'cd /opt' >> /tmp/backend.sh
-  - echo 'wget https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'tar xvf apache-maven-3.9.8-bin.tar.gz &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'mv apache-maven-3.9.8 maven' >> /tmp/backend.sh
-  - echo 'rm -f apache-maven-3.9.8-bin.tar.gz' >> /tmp/backend.sh
-  - echo 'if [[ ! "$PATH" =~ "/opt/maven/bin" ]]; then echo "export PATH=\$PATH:/opt/maven/bin" >> /etc/profile; source /etc/profile; fi' >> /tmp/backend.sh
-  - echo 'mvn --version &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'VALIDATE $? "Maven Installed"' >> /tmp/backend.sh
+  - wget -q https://archive.apache.org/dist/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz -P /tmp
+  - tar xf /tmp/apache-maven-3.9.8-bin.tar.gz -C /opt
+  - ln -s /opt/apache-maven-3.9.8 /opt/maven
+  - echo 'export M2_HOME=/opt/maven' > /etc/profile.d/maven.sh
+  - echo 'export PATH=$PATH:/opt/maven/bin' >> /etc/profile.d/maven.sh
+  - chmod +x /etc/profile.d/maven.sh
 
   # ---------------- DOCKER ----------------
-  - echo 'yum list installed docker &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo 'if [ $? -ne 0 ]; then' >> /tmp/backend.sh
-  - echo '  yum install docker -y &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo '  systemctl enable docker &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo '  systemctl start docker &>> $LOG_FILE' >> /tmp/backend.sh
-  - echo '  VALIDATE $? "Docker Installed and Started"' >> /tmp/backend.sh
-  - echo 'else' >> /tmp/backend.sh
-  - echo '  echo -e "Docker already Installed $Y SKIPPING $N"' >> /tmp/backend.sh
-  - echo 'fi' >> /tmp/backend.sh
-
-  - echo 'echo -e "$G Backend dependencies installation completed successfully! $N"' >> /tmp/backend.sh
-  - echo 'echo "Check logs at: $LOG_FILE"' >> /tmp/backend.sh
-
-  # ---------------- EXECUTE SCRIPT ----------------
-  - chmod +x /tmp/backend.sh
-  - bash /tmp/backend.sh
+  - apt remove -y docker docker-engine docker.io containerd runc || true
+  - apt install -y docker.io
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker devops
